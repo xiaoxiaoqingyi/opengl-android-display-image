@@ -104,7 +104,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private void initView(){
         getSupportActionBar().hide();
-        //img = (ImageView)findViewById(R.id.img);
 
         //初始化GLview
         mGLView = (GLSurfaceView) findViewById(R.id.glview);
@@ -115,7 +114,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         //展示最中间的一张
         int lenght = imgArray.length;
         int i = lenght%2==0 ? lenght/2-1 : lenght/2;
-        //img.setImageResource(imgArray[imgArray.length/2 - 1]);
         curFrame = i;
         //请求渲染
         mGLView.requestRender();
@@ -128,7 +126,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override
     protected void onResume() {
         super.onResume();
-        mSensorManager.registerListener(this, mSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        mSensorManager.registerListener(this, mSensor, SensorManager.SENSOR_DELAY_FASTEST);
     }
 
     @Override
@@ -219,11 +217,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         if((offset_X- down_x)/interval > 1){
             curFrame = acton_down_page - (int)(offset_X- down_x)/interval;
+            if(curFrame == lastFrame){
+                return;
+            }
             turnRight();
+            lastFrame = curFrame;
 
         }else if((offset_X - down_x )/interval < -1){
             curFrame = acton_down_page + Math.abs((int)(offset_X- down_x)/interval);
+            if(curFrame == lastFrame){
+                return;
+            }
             turnLeft();
+            lastFrame = curFrame;
         }
     }
 
@@ -235,7 +241,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
 
         if(curFrame < imgArray.length){
-            //img.setImageResource(imgArray[curFrame]);
             mGLView.requestRender();
         }
     }
@@ -246,7 +251,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             return;
         }
         if(curFrame >= 0){
-            //img.setImageResource(imgArray[curFrame]);
             mGLView.requestRender();
         }
     }
@@ -310,7 +314,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             Log.i("ACTION","curFrame="+ msg.what);
 
             if(msg.what >= 0 && msg.what < imgArray.length){
-                //img.setImageResource(imgArray[msg.what]);
                 mGLView.requestRender();
 
             }
@@ -336,17 +339,23 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             mTexRenderer.init();
             mInitialized = true;
         }
+
         //渲染当前帧
-        renderFrameInResource();  //显示包资源文件
-//        renderFrameInFilePath(); //显示手机内存文件
+        renderFrameInResource(imgArray[curFrame]);  //通过资源文件显示
+
+//        String file_path = Environment.getExternalStorageDirectory().getAbsolutePath() + "/scene/" + (curFrame +1) + ".jpg";
+//        renderFrameInFilePath(file_path); //通过文件路径显示
     }
 
+
     /**
-     * 显示包资源文件
+     * 通过资源文件显示
      * @param resource_id
      */
-    private void loadTextureInResource(int resource_id)
+    private void renderFrameInResource(int resource_id)
     {
+        GLES30.glDeleteTextures(1,mTextures,0);
+
         // Generate textures
         GLES30.glGenTextures(1, mTextures, 0);
 
@@ -368,42 +377,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         // Set texture parameters
         GLToolBox.initTexParams();
-    }
 
-
-    private void deleteTexture()
-    {
-        GLES30.glDeleteTextures(1,mTextures,0);
-    }
-
-    private void renderFrameInResource()
-    {
-        if (lastFrame == curFrame)
-            return;
-        //delete last texture first
-        deleteTexture();
-        loadTextureInResource(imgArray[curFrame]);
         mTexRenderer.renderTexture(mTextures[0]);
-        lastFrame = curFrame;
-    }
-
-    private void renderFrameInFilePath() {
-        if (lastFrame == curFrame)
-            return;
-        //delete last texture first
-        deleteTexture();
-        String path = Environment.getExternalStorageDirectory().getAbsolutePath() + "/test/" + (curFrame +1) + ".jpg";
-        loadTextureInFilePath(path);
-        mTexRenderer.renderTexture(mTextures[0]);
-        lastFrame = curFrame;
     }
 
     /**
-     * 显示手机内存文件
+     * 通过文件路径显示
      * @param file_path
      */
-    private void loadTextureInFilePath(String file_path)
-    {
+    private void renderFrameInFilePath(String file_path) {
+
+        //delete last texture first
+        GLES30.glDeleteTextures(1,mTextures,0);
+
         // Generate textures
         GLES30.glGenTextures(1, mTextures, 0);
 
@@ -425,6 +411,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         // Set texture parameters
         GLToolBox.initTexParams();
+
+        mTexRenderer.renderTexture(mTextures[0]);
     }
+
+
 
 }
